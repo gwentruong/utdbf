@@ -1,6 +1,9 @@
 #include <stdio.h>
 
+
 void parse_header(FILE *fp);
+int  parse_descriptor(FILE *fp);
+int  parse_properties(FILE *fp);
 void parse_int32(unsigned char *buf, int *p, int n, int big_endian);
 void parse_int16(unsigned char *buf, short *p, int n, int big_endian);
 
@@ -13,8 +16,14 @@ int main(int argc, char **argv)
         printf("File not found\n");
         return -1;
     }
+    int len = 0;
 
     parse_header(fp);
+
+    while (parse_descriptor(fp) != -1)
+        len++;
+
+    printf("Number of field descriptor arrays %d\n", len);
 
     fclose(fp);
     return 0;
@@ -22,7 +31,7 @@ int main(int argc, char **argv)
 
 void parse_header(FILE *fp)
 {
-    unsigned char header[68];
+    unsigned char header[32];
     int i;
     int num;
     short head_record[2];
@@ -31,11 +40,11 @@ void parse_header(FILE *fp)
     parse_int32(header + 4, &num, 1, 0);
     parse_int16(header + 8, head_record, 2, 0);
 
-    printf(" File type 0x%02x\n", header[0]);   //0x03 FoxBase+/DBase III+, no memo
+    printf("File type 0x%02x\n", header[0]);   //0x03 FoxBase+/DBase III+, no memo
 
     printf("YYMMDD\n");                         // Print date
     for (i = 1; i < 4; i++)
-        printf("%02x", header[i]);
+        printf("%i ", header[i]);
     printf("\n");
 
     printf("Number of records: %d\n", num);
@@ -47,13 +56,34 @@ void parse_header(FILE *fp)
     // 12 bytes reserved
     printf("Flag #28 %02x\tDriverID  %02x\n", header[28], header[29]);
     // 2 bytes reserved
-
-    printf("Language driver name\n");
-    for (i = 32; i < 64; i++)
-        printf("0x%02x ", header[i]);
-    printf("\n");
-    // 4 bytes reserved
 }
+
+int parse_descriptor(FILE *fp)
+{
+    unsigned char field[32];
+    int i;
+    fread(field, sizeof(field), 1, fp);
+    printf("### %x\n", field[0]);
+    if (field[0] == 0x0D)
+        return -1;
+
+    printf("Field name\n");
+    for (i = 0; i < 11; i++)
+        printf("%c", field[i]);
+    printf("\n");
+
+    printf("Field type %c\n", field[11]);
+    // 4 bytes reserved
+    printf("Field length in binary %u\n", field[16]);
+    printf("Field decimal count in binary %u\n", field[17]);
+    // 2 bytes reserved
+    printf("Work area ID 0x%02x\n", field[20]);
+    // 10 bytes reserved
+    printf("MDX flag 0x%02x\n", field[31]);
+
+    return 0;
+}
+
 
 void parse_int32(unsigned char *buf, int *p, int n, int big_endian)
 {
