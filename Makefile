@@ -1,2 +1,2 @@
 all:
-	gcc -Wall utdbf.c
+	gcc -Wall utdbf.c -o utdbf
